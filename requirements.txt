@@ -1,1 +1,7 @@
-multiprocessing 
+numpy
+pyusb
+psutil
+PySide6
+pyqtgraph
+fastapi
+uvicorn

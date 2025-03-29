@@ -1,7 +1,14 @@
 {
- "pool_address":"public-pool.io",
- "pool_port": 21496,
- "user_name":"bc1qp84qrxsntmpyekp9vzdenlt8khnj0h4wqafeqe",
- "password":"x",
- "min_diff":0.01
+    "pool_address": "bitcoin.viabtc.io",
+    "pool_port": 3333,
+    "user_name": "Jedanoski.001",
+    "password": "123",
+    "min_diff": 0.01,
+    "quantum": {
+        "num_qubits": 4,
+        "start_lba": 1000,
+        "decoherence_rate": 0.1,
+        "auto_adjust": false,
+        "measurement_interval": 5.0
+    }
 }
