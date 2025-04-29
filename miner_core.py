@@ -426,27 +426,32 @@ class QuantumMiner:
         
         # Get the list of available devices from the GUI's HDDInterface
         try:
+            from PySide6.QtCore import QMetaObject, Qt, Q_RETURN_ARG
             from gui import QuantumMinerGUI
             gui_app = QApplication.instance()
             if gui_app is None:
                 logger.error("GUI application instance not found.")
                 return None
-            
+
             main_window = None
             for widget in QApplication.topLevelWidgets():
                 if isinstance(widget, QuantumMinerGUI):
                     main_window = widget
                     break
-            
+
             if main_window is None:
                 logger.error("QuantumMinerGUI instance not found.")
                 return None
-            
-            devices = main_window.hdd.devices
+
+            devices = []
+            QMetaObject.invokeMethod(main_window, "get_hdd_devices", Qt.BlockingQueuedConnection,
+                                     Q_RETURN_ARG(list), devices)
+            devices = devices[0]  # Extract the returned list
+
             if not devices:
                 logger.warning("No HDDs detected. Mining will proceed without HDD I/O.")
                 devices = [None]  # Use None to indicate no HDD
-        
+
         except Exception as e:
             logger.error(f"Error accessing GUI for HDD devices: {e}")
             devices = [None]  # Fallback to no HDD
