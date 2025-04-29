@@ -42,6 +42,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger('gui')
 
 class HDDMonitorThread(QThread):
+    """Thread for monitoring HDD I/O operations."""
+    
+    update_signal = Signal(dict)
+    
+    def __init__(self, hdd_interface):
+        super().__init__()
         self.hdd = hdd_interface
         self.running = True
         
