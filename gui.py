@@ -1024,16 +1024,17 @@ class QuantumMinerGUI(QMainWindow):
         # Load initial configuration
         self._load_config()
 
-    @Slot()
+    @Slot(result=list) # Explicitly define return type for invokeMethod
     def get_hdd_devices(self):
         """
-        Get the list of HDD devices.
+        Get the list of HDD device identifiers.
 
         Returns:
-            list: List of HDD devices
+            list: List of HDD device identifiers (strings)
         """
         if self.hdd:
-            return self.hdd.devices
+            # --- FIX: Return the correct attribute ---
+            return self.hdd.devices # Should now return the list of identifiers
         else:
             return []
         
@@ -1051,11 +1052,17 @@ class QuantumMinerGUI(QMainWindow):
         """Handle start button click."""
         try:
             # Initialize components
+            # --- Ensure HDDInterface is initialized before accessing devices ---
             self.hdd = HDDInterface(auto_detect=True)
-            
+            if not self.hdd or not self.hdd.devices:
+                 logger.warning("No HDD detected or failed to initialize HDD Interface. Quantum features might be limited.")
+                 # Decide how to proceed - maybe disable quantum parts or show error?
+                 # For now, let's allow it to continue but SCIQubits might fail later if it requires an HDD.
+
             num_qubits = self.config_tab.num_qubits_spin.value()
             start_lba = self.config_tab.start_lba_spin.value()
-            
+
+            # --- Pass the hdd instance ---
             self.qubits = SCIQubits(num_qubits=num_qubits, start_lba=start_lba, hdd_interface=self.hdd)
             self.decoherence = DecoherenceManager(num_qubits=num_qubits, enable_hardware_monitoring=True)
             
