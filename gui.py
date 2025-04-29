@@ -35,6 +35,88 @@ logger = logging.getLogger('gui')
 # Set PyQtGraph configuration
 pg.setConfigOptions(antialias=True, background='w', foreground='k')
 
+class HDDInterface:
+    """Interface for interacting with a hard drive."""
+    
+    def __init__(self, auto_detect=False):
+        """
+        Initialize the HDD interface.
+        
+        Args:
+            auto_detect (bool): Automatically detect the hard drive
+        """
+        self.devices = []
+        if auto_detect:
+            self.detect_devices()
+        
+    def detect_devices(self):
+        """Detect all connected USB hard drives."""
+        self.devices = []
+        for partition in psutil.disk_partitions():
+            if 'removable' in partition.opts:
+                self.devices.append(partition.device)
+        logger.info(f"Detected USB hard drives: {self.devices}")
+        
+    def scsi_read_lba(self, lba, device=None):
+        """
+        Read data from a specific LBA using SCSI commands.
+        
+        Args:
+            lba (int): Logical Block Address to read from
+            device (str, optional): The device to read from. If None, uses the first detected device.
+        
+        Returns:
+            bytes: Data read from the LBA, or None if an error occurred
+        """
+        if not device and self.devices:
+            device = self.devices[0]
+        
+        if not device:
+            logger.error("No device specified and no devices detected.")
+            return None
+        
+        try:
+            # This is a placeholder, replace with actual SCSI command execution
+            logger.info(f"Reading LBA {lba} from device {device} (simulated)")
+            return b"Fake data for LBA " + str(lba).encode('utf-8')
+        except Exception as e:
+            logger.error(f"Error reading LBA {lba} from device {device}: {e}")
+            return None
+            
+    def inquiry(self, device=None):
+        """
+        Get information about the hard drive using SCSI INQUIRY command.
+        
+        Args:
+            device (str, optional): The device to get information from. If None, uses the first detected device.
+        
+        Returns:
+            dict: Dictionary containing hard drive information, or None if an error occurred
+        """
+        if not device and self.devices:
+            device = self.devices[0]
+            
+        if not device:
+            logger.error("No device specified and no devices detected.")
+            return None
+            
+        try:
+            # This is a placeholder, replace with actual SCSI command execution
+            logger.info(f"Getting information from device {device} (simulated)")
+            return {
+                'vendor': 'Generic USB',
+                'product': 'External HDD',
+                'version': '1.0'
+            }
+        except Exception as e:
+            logger.error(f"Error getting information from device {device}: {e}")
+            return None
+            
+    def close(self):
+        """Close the connection to the hard drive."""
+        # No need to close anything in this simulated version
+        pass
+
 class HDDMonitorThread(QThread):
     """Thread for monitoring HDD I/O operations."""
     
@@ -49,21 +131,28 @@ class HDDMonitorThread(QThread):
         """Main thread loop."""
         while self.running:
             try:
-                # Get HDD information
-                info = self.hdd.inquiry() if self.hdd else None
-                
-                # Read from a few LBAs to monitor activity
-                read_results = []
-                if self.hdd:
-                    for lba in range(1000, 1010):
-                        data = self.hdd.scsi_read_lba(lba)
-                        if data:
-                            read_results.append((lba, len(data), data[:16].hex()))
-                            
+                all_info = []
+                all_read_results = []
+
+                for device in self.hdd.devices:
+                    # Get HDD information
+                    info = self.hdd.inquiry(device=device) if self.hdd else None
+                    
+                    # Read from a few LBAs to monitor activity
+                    read_results = []
+                    if self.hdd:
+                        for lba in range(1000, 1010):
+                            data = self.hdd.scsi_read_lba(lba, device=device)
+                            if data:
+                                read_results.append((lba, len(data), data[:16].hex()))
+                    
+                    all_info.append(info)
+                    all_read_results.append(read_results)
+
                 # Emit update signal
                 self.update_signal.emit({
-                    'info': info,
-                    'read_results': read_results,
+                    'info': all_info,
+                    'read_results': all_read_results,
                     'timestamp': time.time()
                 })
                 
