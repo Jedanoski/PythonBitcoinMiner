@@ -370,92 +370,83 @@ class HDDIOTab(QWidget):
         
         # Create layout
         layout = QVBoxLayout(self)
-        
-        # HDD information group
-        info_group = QGroupBox("HDD Information")
-        info_layout = QFormLayout(info_group)
-        
-        self.vendor_label = QLabel("N/A")
-        self.product_label = QLabel("N/A")
-        self.version_label = QLabel("N/A")
-        
-        info_layout.addRow("Vendor:", self.vendor_label)
-        info_layout.addRow("Product:", self.product_label)
-        info_layout.addRow("Version:", self.version_label)
-        
-        layout.addWidget(info_group)
-        
-        # LBA queue group
-        lba_group = QGroupBox("LBA Queue")
-        lba_layout = QVBoxLayout(lba_group)
-        
-        self.lba_table = QTableWidget(0, 3)
-        self.lba_table.setHorizontalHeaderLabels(["LBA", "Size", "Data (first 16 bytes)"])
-        self.lba_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        
-        lba_layout.addWidget(self.lba_table)
-        
-        layout.addWidget(lba_group)
-        
-        # Throughput graph
-        throughput_group = QGroupBox("Throughput")
-        throughput_layout = QVBoxLayout(throughput_group)
-        
-        self.throughput_plot = pg.PlotWidget()
-        self.throughput_plot.setLabel('left', 'Throughput', 'MB/s')
-        self.throughput_plot.setLabel('bottom', 'Time', 's')
-        self.throughput_curve = self.throughput_plot.plot(pen=pg.mkPen(color='b', width=2))
-        
-        throughput_layout.addWidget(self.throughput_plot)
-        
-        layout.addWidget(throughput_group)
-        
+
+        self.hdd_groups = []
+
         # Initialize data
         self.throughput_data = {'x': [], 'y': []}
         self.start_time = time.time()
-        
+
+        # Add a placeholder label
+        self.no_hdd_label = QLabel("No HDDs detected")
+        self.no_hdd_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.no_hdd_label)
+
+    def _create_hdd_group(self, device_name):
+        """Create a group box for displaying HDD information."""
+        hdd_group = QGroupBox(f"HDD: {device_name}")
+        hdd_layout = QFormLayout(hdd_group)
+
+        vendor_label = QLabel("N/A")
+        product_label = QLabel("N/A")
+        version_label = QLabel("N/A")
+        lba_table = QTableWidget(0, 3)
+        lba_table.setHorizontalHeaderLabels(["LBA", "Size", "Data (first 16 bytes)"])
+        lba_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        hdd_layout.addRow("Vendor:", vendor_label)
+        hdd_layout.addRow("Product:", product_label)
+        hdd_layout.addRow("Version:", version_label)
+        hdd_layout.addRow("LBA Queue:", lba_table)
+
+        return hdd_group, vendor_label, product_label, version_label, lba_table
+
     @Slot(dict)
     def update_hdd_info(self, data):
         """
         Update HDD information.
-        
+
         Args:
             data (dict): HDD information data
         """
-        info = data.get('info')
-        if info:
-            self.vendor_label.setText(info.get('vendor', 'N/A'))
-            self.product_label.setText(info.get('product', 'N/A'))
-            self.version_label.setText(info.get('version', 'N/A'))
-            
-        read_results = data.get('read_results', [])
-        
-        # Update LBA table
-        self.lba_table.setRowCount(len(read_results))
-        for i, (lba, size, data_hex) in enumerate(read_results):
-            self.lba_table.setItem(i, 0, QTableWidgetItem(str(lba)))
-            self.lba_table.setItem(i, 1, QTableWidgetItem(str(size)))
-            self.lba_table.setItem(i, 2, QTableWidgetItem(data_hex))
-            
-        # Update throughput graph
-        timestamp = data.get('timestamp', time.time())
-        elapsed = timestamp - self.start_time
-        
-        # Calculate throughput (MB/s)
-        throughput = sum(size for _, size, _ in read_results) / (1024 * 1024)
-        
-        # Add data point
-        self.throughput_data['x'].append(elapsed)
-        self.throughput_data['y'].append(throughput)
-        
-        # Keep only the last 100 points
-        if len(self.throughput_data['x']) > 100:
-            self.throughput_data['x'] = self.throughput_data['x'][-100:]
-            self.throughput_data['y'] = self.throughput_data['y'][-100:]
-            
-        # Update plot
-        self.throughput_curve.setData(self.throughput_data['x'], self.throughput_data['y'])
+        all_info = data.get('info', [])
+        all_read_results = data.get('read_results', [])
 
+        # Remove the "No HDDs detected" label if HDDs are present
+        if all_info and self.no_hdd_label.isVisible():
+            self.no_hdd_label.hide()
+
+        # Clear existing HDD groups
+        for group in self.hdd_groups:
+            group.setParent(None)  # Remove from layout
+        self.hdd_groups = []
+
+        # Create HDD groups and update information
+        main_layout = self.layout()
+        for i, info in enumerate(all_info):
+            device_name = self.parent().hdd.devices[i] if i < len(self.parent().hdd.devices) else f"Unknown {i}"
+            hdd_group, vendor_label, product_label, version_label, lba_table = self._create_hdd_group(device_name)
+
+            if info:
+                vendor_label.setText(info.get('vendor', 'N/A'))
+                product_label.setText(info.get('product', 'N/A'))
+                version_label.setText(info.get('version', 'N/A'))
+
+            read_results = all_read_results[i] if i < len(all_read_results) else []
+
+            # Update LBA table
+            lba_table.setRowCount(len(read_results))
+            for j, (lba, size, data_hex) in enumerate(read_results):
+                lba_table.setItem(j, 0, QTableWidgetItem(str(lba)))
+                lba_table.setItem(j, 1, QTableWidgetItem(str(size)))
+                lba_table.setItem(j, 2, QTableWidgetItem(data_hex))
+
+            main_layout.addWidget(hdd_group)
+            self.hdd_groups.append(hdd_group)
+
+        # If no HDDs were detected, show the "No HDDs detected" label
+        if not all_info:
+            self.no_hdd_label.show()
 
 class QubitRegisterTab(QWidget):
     """Tab for displaying qubit register state."""
