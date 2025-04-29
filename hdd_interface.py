@@ -79,6 +79,30 @@ class HDDInterface:
             except Exception as e:
                 logger.error(f"Error initializing HDD for device {device}: {e}")
 
+    def _auto_detect_devices(self):
+        """Auto-detect the first available USB mass storage device."""
+        # Find all USB devices with specified Vendor ID and Product ID
+        devices = usb.core.find(find_all=True, idVendor=0x03EB, idProduct=0x6124)
+        
+        # If no mass storage devices found, try to find devices with interface class 0x08
+        if not devices:
+            all_devices = list(usb.core.find(find_all=True))
+            for dev in all_devices:
+                try:
+                    for cfg in dev:
+                        for intf in cfg:
+                            if intf.bInterfaceClass == 0x08:  # Mass Storage Class
+                                devices.append(dev)
+                                break
+                except:
+                    continue
+        
+        if devices:
+            self.device = devices[0]
+            logger.info(f"Auto-detected USB Mass Storage device: {self.device.idVendor:04x}:{self.device.idProduct:04x}")
+        else:
+            logger.error("No USB Mass Storage devices found")
+            
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
         try:
