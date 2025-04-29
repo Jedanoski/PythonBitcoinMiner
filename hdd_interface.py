@@ -48,8 +48,8 @@ class HDDInterface:
             
     def _auto_detect_device(self):
         """Auto-detect the first available USB mass storage device."""
-        # Find all USB devices with Mass Storage Class (0x08)
-        devices = list(usb.core.find(find_all=True, bDeviceClass=0x08))
+        # Find all USB devices with specified Vendor ID and Product ID
+        devices = usb.core.find(find_all=True, idVendor=0x03EB, idProduct=0x6124)
         
         # If no mass storage devices found, try to find devices with interface class 0x08
         if not devices:
@@ -70,6 +70,11 @@ class HDDInterface:
         else:
             logger.error("No USB Mass Storage devices found")
             
+    def initialize_hdd(self):
+        for device in self.devices:
+            # Wykonywanie komend SCSI, aby inicializować urządzenia HDD
+            device.ctrl_transfer(0x21, 0x09, 0x0000, 0x0000, [0x12, 0x00, 0x00, 0x00])
+
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
         try:
