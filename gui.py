@@ -1020,9 +1020,22 @@ class QuantumMinerGUI(QMainWindow):
         self.stop_button.clicked.connect(self._on_stop_clicked)
         self.decoherence_tab.decoherence_changed.connect(self._on_decoherence_changed)
         self.config_tab.config_changed.connect(self._on_config_changed)
-        
+
         # Load initial configuration
         self._load_config()
+
+    @Slot()
+    def get_hdd_devices(self):
+        """
+        Get the list of HDD devices.
+
+        Returns:
+            list: List of HDD devices
+        """
+        if self.hdd:
+            return self.hdd.devices
+        else:
+            return []
         
     def _load_config(self):
         """Load configuration from file."""
