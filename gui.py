@@ -5,6 +5,7 @@ This module implements a graphical user interface for the quantum miner
 using PySide6 and PyQtGraph.
 """
 
+import json
 import sys
 import time
 import logging
