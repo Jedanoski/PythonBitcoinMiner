@@ -424,38 +424,30 @@ class QuantumMiner:
         job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs = job
         target = nbits
         
-        # Get the list of available devices from the GUI's HDDInterface
+        # Get the list of available devices
+        devices = [None]  # Default to no HDD
+
+        # Try to get devices from GUI's HDDInterface if GUI is available
         try:
             from PySide6.QtCore import QMetaObject, Qt, Q_RETURN_ARG
             from gui import QuantumMinerGUI
             gui_app = QApplication.instance()
-            if gui_app is None:
-                logger.error("GUI application instance not found.")
-                return None
+            if gui_app is not None:
+                main_window = None
+                for widget in QApplication.topLevelWidgets():
+                    if isinstance(widget, QuantumMinerGUI):
+                        main_window = widget
+                        break
 
-            main_window = None
-            for widget in QApplication.topLevelWidgets():
-                if isinstance(widget, QuantumMinerGUI):
-                    main_window = widget
-                    break
-
-            if main_window is None:
-                logger.error("QuantumMinerGUI instance not found.")
-                return None
-
-            devices = []
-            QMetaObject.invokeMethod(main_window, "get_hdd_devices", Qt.BlockingQueuedConnection,
-                             Q_RETURN_ARG(list), devices)
-            # --- FIX: Remove incorrect indexing ---
-            # devices = devices[0]  # REMOVE THIS LINE
-
-            if not devices:
-                logger.warning("No HDDs detected. Mining will proceed without HDD I/O.")
-                devices = [None]  # Use None to indicate no HDD
-
+                if main_window is not None:
+                    devices = []
+                    QMetaObject.invokeMethod(main_window, "get_hdd_devices", Qt.BlockingQueuedConnection,
+                                     Q_RETURN_ARG(list), devices)
+                    if not devices:
+                        logger.warning("No HDDs detected. Mining will proceed without HDD I/O.")
+                        devices = [None]  # Use None to indicate no HDD
         except Exception as e:
-            logger.error(f"Error accessing GUI for HDD devices: {e}")
-            devices = [None]  # Fallback to no HDD
+            logger.warning(f"Unable to access GUI for HDD devices: {e}")
         
         for device in devices:
             # Check if quantum components are available
