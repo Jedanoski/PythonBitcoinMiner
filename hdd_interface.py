@@ -38,7 +38,7 @@ class HDDInterface:
         self.endpoint_out = None
         
         if auto_detect and (vid is None or pid is None):
-            self._auto_detect_device()
+            self._auto_detect_devices()
         else:
             self._connect_device(vid, pid)
             
@@ -72,8 +72,12 @@ class HDDInterface:
             
     def initialize_hdd(self):
         for device in self.devices:
-            # Wykonywanie komend SCSI, aby inicializować urządzenia HDD
-            device.ctrl_transfer(0x21, 0x09, 0x0000, 0x0000, [0x12, 0x00, 0x00, 0x00])
+            # Execute SCSI commands to initialize the HDD
+            try:
+                device.ctrl_transfer(0x21, 0x09, 0x0000, 0x0000, [0x12, 0x00, 0x00, 0x00])
+                logger.info(f"HDD initialized successfully for device: {device}")
+            except Exception as e:
+                logger.error(f"Error initializing HDD for device {device}: {e}")
 
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
