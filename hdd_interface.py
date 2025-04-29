@@ -49,27 +49,55 @@ class HDDInterface:
     def _auto_detect_devices(self):
         """Auto-detect the first available USB mass storage device."""
         # Find all USB devices with specified Vendor ID and Product ID
-        devices = usb.core.find(find_all=True, idVendor=0x03EB, idProduct=0x6124)
-        
-        # If no mass storage devices found, try to find devices with interface class 0x08
-        if not devices:
-            all_devices = list(usb.core.find(find_all=True))
-            for dev in all_devices:
-                try:
-                    for cfg in dev:
-                        for intf in cfg:
-                            if intf.bInterfaceClass == 0x08:  # Mass Storage Class
-                                devices.append(dev)
-                                break
-                except:
-                    continue
-        
-        if devices:
-            self.device = devices[0]
-            logger.info(f"Auto-detected USB Mass Storage device: {self.device.idVendor:04x}:{self.device.idProduct:04x}")
+        try:
+            # --- FIX: Convert generator to list immediately ---
+            specific_devices = list(usb.core.find(find_all=True, idVendor=0x03EB, idProduct=0x6124))
+            found_devices = specific_devices  # Changed devices to found_devices
+        except Exception as e:
+            logger.warning(f"Error finding specific devices: {e}")
+
+        # If no specific devices found, search by interface class
+        if not found_devices:
+            logger.info("No specific VID/PID match, searching by Mass Storage Class...")
+            try:
+                # --- FIX: Convert generator to list immediately ---
+                all_devs = list(usb.core.find(find_all=True))
+                for dev in all_devs:
+                    try:
+                        # Check if already found
+                        if dev in found_devices:
+                            continue
+                        for cfg in dev:
+                            for intf in cfg:
+                                if intf.bInterfaceClass == 0x08:  # Mass Storage Class
+                                    found_devices.append(dev)
+                                    # Break inner loops once found for this device
+                                    raise StopIteration
+                    except usb.core.USBError as e:
+                        # Ignore devices we can't access
+                        logger.debug(f"Could not access device {dev.idVendor:04x}:{dev.idProduct:04x}: {e}")
+                        continue
+                    except StopIteration:
+                        continue  # Go to the next device
+            except Exception as e:
+                logger.error(f"Error during generic device scan: {e}")
+
+        if found_devices:
+            self.device_objects = found_devices
+            # --- FIX: Populate self.devices with identifiers ---
+            # Using bus/address as a simple identifier for now, might need refinement
+            self.devices = [f"Bus {dev.bus} Addr {dev.address} ({dev.idVendor:04x}:{dev.idProduct:04x})" for dev in found_devices]
+
+            # --- FIX: Assign the first device object correctly ---
+            self.device = self.device_objects[0]
+            logger.info(f"Found {len(self.devices)} USB Mass Storage device(s). Using first: {self.devices[0]}")
+            logger.info(f"Device identifiers: {self.devices}")
         else:
-            logger.error("No USB Mass Storage devices found")
-            
+            logger.error("No USB Mass Storage devices found.")
+            self.device = None
+            self.devices = []
+            self.device_objects = []
+
     def initialize_hdd(self):
         for device in self.devices:
             # Execute SCSI commands to initialize the HDD
@@ -85,7 +113,7 @@ class HDDInterface:
             pass
         except Exception as e:
             logger.error(f"Error connecting to device: {e}")
-            
+
     def _setup_interface(self):
         """Set up the USB interface and endpoints."""
         try:
