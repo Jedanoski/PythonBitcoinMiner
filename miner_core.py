@@ -446,6 +446,8 @@ class QuantumMiner:
             devices = []
                     QMetaObject.invokeMethod(main_window, "get_hdd_devices", Qt.BlockingQueuedConnection,
                                      Q_RETURN_ARG(list), devices)
+                    # --- FIX: Remove incorrect indexing ---
+                    # devices = devices[0]  # REMOVE THIS LINE
 
             if not devices:
                 logger.warning("No HDDs detected. Mining will proceed without HDD I/O.")
