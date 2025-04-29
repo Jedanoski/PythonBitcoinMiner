@@ -476,7 +476,7 @@ class QuantumMiner:
                 self.stats['worker_count'] = worker_count
                 
                 # Use the measured state as a seed for nonce ranges
-                nonce_seed = measured_state * (2**24)  # Spread across the nonce space
+                nonce_seed = int(measured_state * (2**24))  # Spread across the nonce space
                 nonce_range_size = 2**32 // worker_count
                 
                 logger.info(f"Quantum collapse to state {measured_state} with probability {probability:.4f} on device {device}")
