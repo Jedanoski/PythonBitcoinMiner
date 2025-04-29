@@ -424,92 +424,120 @@ class QuantumMiner:
         job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs = job
         target = nbits
         
-        # Check if quantum components are available
-        if self.qubits and self.decoherence:
-            # Prepare qubits in superposition
-            self.qubits.prepare_superposition()
+        # Get the list of available devices from the GUI's HDDInterface
+        try:
+            from gui import QuantumMinerGUI
+            gui_app = QApplication.instance()
+            if gui_app is None:
+                logger.error("GUI application instance not found.")
+                return None
             
-            # Apply HDD I/O gate to introduce real hardware noise
-            self.qubits.apply_hdd_io_gate()
-            
-            # Apply decoherence to enhance transport
-            state_vector = self.qubits.get_state_vector()
-            state_vector = self.decoherence.apply_decoherence(state_vector, auto_adjust=self.config['quantum']['auto_adjust'])
-            
-            # Update qubit state
-            self.qubits.state_vector = state_vector
-            
-            # Measure the quantum state
-            measured_state, probability = self.qubits.measure()
-            self.stats['quantum_collapses'] += 1
-            
-            # Use the measured state to determine the number of workers and nonce ranges
-            worker_count = max(1, int(self.max_workers * probability))
-            self.stats['worker_count'] = worker_count
-            
-            # Use the measured state as a seed for nonce ranges
-            nonce_seed = measured_state * (2**24)  # Spread across the nonce space
-            nonce_range_size = 2**32 // worker_count
-            
-            logger.info(f"Quantum collapse to state {measured_state} with probability {probability:.4f}")
-            logger.info(f"Spawning {worker_count} workers with nonce seed {nonce_seed}")
-        else:
-            # Classical mode - use random values
-            import random
-            worker_count = max(1, int(self.max_workers * 0.75))  # Use 75% of max workers
-            self.stats['worker_count'] = worker_count
-            
-            nonce_seed = random.randint(0, 2**32 - 1)
-            nonce_range_size = 2**32 // worker_count
-            
-            logger.info(f"Classical mode: Spawning {worker_count} workers with random nonce seed {nonce_seed}")
-        
-        # Create a local stop event for this mining round
-        local_stop_event = Event()
-        
-        # Create and start worker processes
-        workers = []
-        for i in range(worker_count):
-            nonce_start = (nonce_seed + i * nonce_range_size) % (2**32)
-            nonce_end = (nonce_start + nonce_range_size) % (2**32)
-            
-            worker = Thread(
-                target=self._mine_worker,
-                args=(job, target, self.extranonce1, self.extranonce2_size, 
-                      nonce_start, nonce_end, self.result_queue, local_stop_event)
-            )
-            worker.daemon = True
-            workers.append(worker)
-            worker.start()
-            
-        # Store active workers
-        self.active_workers = workers
-        
-        # Wait for a result or timeout
-        timeout = self.config['quantum'].get('measurement_interval', 5.0)
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            try:
-                result = self.result_queue.get(block=False)
-                local_stop_event.set()
-                
-                # Wait for workers to finish
-                for worker in workers:
-                    worker.join(timeout=1.0)
-                    
-                return result
-            except Empty:
-                if self.stop_event.is_set():
+            main_window = None
+            for widget in QApplication.topLevelWidgets():
+                if isinstance(widget, QuantumMinerGUI):
+                    main_window = widget
                     break
-                time.sleep(0.1)
-                
-        # No result found within timeout, stop workers
-        local_stop_event.set()
+            
+            if main_window is None:
+                logger.error("QuantumMinerGUI instance not found.")
+                return None
+            
+            devices = main_window.hdd.devices
+            if not devices:
+                logger.warning("No HDDs detected. Mining will proceed without HDD I/O.")
+                devices = [None]  # Use None to indicate no HDD
         
-        # Wait for workers to finish
-        for worker in workers:
-            worker.join(timeout=1.0)
+        except Exception as e:
+            logger.error(f"Error accessing GUI for HDD devices: {e}")
+            devices = [None]  # Fallback to no HDD
+        
+        for device in devices:
+            # Check if quantum components are available
+            if self.qubits and self.decoherence:
+                # Prepare qubits in superposition
+                self.qubits.prepare_superposition(device=device)
+                
+                # Apply HDD I/O gate to introduce real hardware noise
+                self.qubits.apply_hdd_io_gate(device=device)
+                
+                # Apply decoherence to enhance transport
+                state_vector = self.qubits.get_state_vector()
+                state_vector = self.decoherence.apply_decoherence(state_vector, auto_adjust=self.config['quantum']['auto_adjust'])
+                
+                # Update qubit state
+                self.qubits.state_vector = state_vector
+                
+                # Measure the quantum state
+                measured_state, probability = self.qubits.measure()
+                self.stats['quantum_collapses'] += 1
+                
+                # Use the measured state to determine the number of workers and nonce ranges
+                worker_count = max(1, int(self.max_workers * probability))
+                self.stats['worker_count'] = worker_count
+                
+                # Use the measured state as a seed for nonce ranges
+                nonce_seed = measured_state * (2**24)  # Spread across the nonce space
+                nonce_range_size = 2**32 // worker_count
+                
+                logger.info(f"Quantum collapse to state {measured_state} with probability {probability:.4f} on device {device}")
+                logger.info(f"Spawning {worker_count} workers with nonce seed {nonce_seed}")
+            else:
+                # Classical mode - use random values
+                import random
+                worker_count = max(1, int(self.max_workers * 0.75))  # Use 75% of max workers
+                self.stats['worker_count'] = worker_count
+                
+                nonce_seed = random.randint(0, 2**32 - 1)
+                nonce_range_size = 2**32 // worker_count
+                
+                logger.info(f"Classical mode: Spawning {worker_count} workers with random nonce seed {nonce_seed} on device {device}")
+            
+            # Create a local stop event for this mining round
+            local_stop_event = Event()
+            
+            # Create and start worker processes
+            workers = []
+            for i in range(worker_count):
+                nonce_start = (nonce_seed + i * nonce_range_size) % (2**32)
+                nonce_end = (nonce_start + nonce_range_size) % (2**32)
+                
+                worker = Thread(
+                    target=self._mine_worker,
+                    args=(job, target, self.extranonce1, self.extranonce2_size, 
+                          nonce_start, nonce_end, self.result_queue, local_stop_event)
+                )
+                worker.daemon = True
+                workers.append(worker)
+                worker.start()
+                
+            # Store active workers
+            self.active_workers = workers
+            
+            # Wait for a result or timeout
+            timeout = self.config['quantum'].get('measurement_interval', 5.0)
+            start_time = time.time()
+            
+            while time.time() - start_time < timeout:
+                try:
+                    result = self.result_queue.get(block=False)
+                    local_stop_event.set()
+                    
+                    # Wait for workers to finish
+                    for worker in workers:
+                        worker.join(timeout=1.0)
+                        
+                    return result
+                except Empty:
+                    if self.stop_event.is_set():
+                        break
+                    time.sleep(0.1)
+                    
+            # No result found within timeout, stop workers
+            local_stop_event.set()
+            
+            # Wait for workers to finish
+            for worker in workers:
+                worker.join(timeout=1.0)
             
         return None
         
