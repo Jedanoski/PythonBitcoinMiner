@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, Signal, Slot, QThread
 from PySide6.QtGui import QFont, QColor
 import pyqtgraph as pg
+import psutil
 
 from miner_core import QuantumMiner
 from hdd_interface import HDDInterface
