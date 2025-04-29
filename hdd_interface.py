@@ -46,7 +46,7 @@ class HDDInterface:
             logger.info(f"Connected to USB device: {self.device}")
             self._setup_interface()
             
-    def _auto_detect_device(self):
+    def _auto_detect_devices(self):
         """Auto-detect the first available USB mass storage device."""
         # Find all USB devices with specified Vendor ID and Product ID
         devices = usb.core.find(find_all=True, idVendor=0x03EB, idProduct=0x6124)
@@ -82,6 +82,9 @@ class HDDInterface:
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
         try:
+            pass
+        except Exception as e:
+            logger.error(f"Error connecting to device: {e}")
             
     def _setup_interface(self):
         """Set up the USB interface and endpoints."""
@@ -299,13 +302,7 @@ class HDDInterface:
         """
         # Standard block size for most HDDs
         block_size = 512
-        
-        # Ensure data is a multiple of block size
-        if len(data) % block_size != 0:
-            padding = b'\x00' * (block_size - (len(data) % block_size))
-            data += padding
-            
-        count = len(data) // block_size
+        data_length = block_size * count
         
         # WRITE(10) command: opcode(1), flags(1), lba(4), group(1), count(2), control(1)
         cdb = struct.pack('>BBIBBB', 
