@@ -70,14 +70,18 @@ class HDDInterface:
         else:
             logger.error("No USB Mass Storage devices found")
             
+    def initialize_hdd(self):
+        for device in self.devices:
+            # Execute SCSI commands to initialize the HDD
+            try:
+                device.ctrl_transfer(0x21, 0x09, 0x0000, 0x0000, [0x12, 0x00, 0x00, 0x00])
+                logger.info(f"HDD initialized successfully for device: {device}")
+            except Exception as e:
+                logger.error(f"Error initializing HDD for device {device}: {e}")
+
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
         try:
-            self.device = usb.core.find(idVendor=vid, idProduct=pid)
-            if self.device is None:
-                logger.error(f"Device with VID={vid:04x}, PID={pid:04x} not found")
-        except Exception as e:
-            logger.error(f"Error connecting to device: {e}")
             
     def _setup_interface(self):
         """Set up the USB interface and endpoints."""
