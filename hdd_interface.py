@@ -294,6 +294,7 @@ class HDDInterface:
         Returns:
             bytes: The data read from the device, or None if the read failed
         """
+        count = count  # Define the 'count' variable
         # Standard block size for most HDDs
         block_size = 512
         data_length = block_size * count
@@ -317,17 +318,19 @@ class HDDInterface:
         logger.info(f"Successfully read {len(data)} bytes from LBA {lba}")
         return data
         
-    def scsi_write_lba(self, lba, data):
+    def scsi_write_lba(self, lba, data, count=1):
         """
         Write data to the specified Logical Block Address (LBA).
         
         Args:
             lba (int): The Logical Block Address to write to
             data (bytes): The data to write
+            count (int): Number of blocks to write
             
         Returns:
             int: Number of bytes written, or None if the write failed
         """
+        count = count  # Define the 'count' variable
         # Standard block size for most HDDs
         block_size = 512
         data_length = block_size * count
