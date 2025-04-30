@@ -9,9 +9,7 @@
         "start_lba": 1000,
         "decoherence_rate": 0.1,
         "auto_adjust": false,
-        "measurement_interval": 5.0
-    },
-{
+        "measurement_interval": 5.0,
     "vid": null,
     "pid": null
 }
