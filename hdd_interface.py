@@ -106,11 +106,15 @@ class HDDInterface:
                 logger.info(f"HDD initialized successfully for device: {device}")
             except Exception as e:
                 logger.error(f"Error initializing HDD for device {device}: {e}")
-
+            
     def _connect_device(self, vid, pid):
         """Connect to a specific USB device using VID and PID."""
         try:
-            pass
+            self.device = usb.core.find(idVendor=vid, idProduct=pid)
+            if self.device is None:
+                logger.error(f"Device not found with VID: {vid:04x} and PID: {pid:04x}")
+            else:
+                logger.info(f"Device found with VID: {vid:04x} and PID: {pid:04x}")
         except Exception as e:
             logger.error(f"Error connecting to device: {e}")
 
