@@ -50,12 +50,18 @@ def run_cli(args):
     """Run in command-line mode."""
     logger.info("Starting quantum miner in CLI mode")
     
-    # Create miner
-    miner = QuantumMiner(
-        config_path=args.config,
-        num_qubits=args.qubits,
-        start_lba=args.lba
-    )
+    try:
+        # Create miner
+        miner = QuantumMiner(
+            config_path=args.config,
+            num_qubits=args.qubits,
+            start_lba=args.lba
+        )
+    except Exception as e:
+        logger.error(f"Error initializing QuantumMiner: {e}")
+        print(f"Error initializing QuantumMiner: {e}")
+        print("Please check your configuration and ensure the HDD is properly connected.")
+        sys.exit(1)
     
     # Set decoherence rate
     miner.set_config('quantum.decoherence_rate', args.decoherence)
