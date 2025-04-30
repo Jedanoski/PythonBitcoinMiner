@@ -11,5 +11,5 @@
         "auto_adjust": false,
         "measurement_interval": 5.0,
         "vid": null,
-        "pid": null,
+        "pid": null
 }
