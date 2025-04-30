@@ -11,6 +11,7 @@
         "auto_adjust": false,
         "measurement_interval": 5.0
     },
-    "vid": "0x1234",
-    "pid": "0x5678"
+{
+    "vid": null,
+    "pid": null
 }
