@@ -10,5 +10,7 @@
         "decoherence_rate": 0.1,
         "auto_adjust": false,
         "measurement_interval": 5.0
-    }
+    },
+    "vid": "0x1234",
+    "pid": "0x5678"
 }
